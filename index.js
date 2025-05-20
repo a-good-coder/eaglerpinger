@@ -16,8 +16,6 @@ function createBot() {
 
   bot.on('spawn', () => {
     console.log('✅ Bot joined the server!');
-    bot.chat("😴 AFK Bot ready!");
-
     startAfkMovements();
     autoSleepLoop();
   });
@@ -62,7 +60,7 @@ function createBot() {
   async function placeBed() {
     return new Promise(async (resolve, reject) => {
       try {
-        bot.chat('/give @s white_bed');
+        bot.chat('/give @s bed');
         await bot.waitForTicks(10); // wait for the bed to appear in inventory
 
         const bedItem = bot.inventory.items().find(item => item.name.includes('bed'));
@@ -92,7 +90,6 @@ function createBot() {
       if (!bed) {
         try {
           await placeBed();
-          bot.chat("🛏️ Placed a bed.");
           // give time to place
           await bot.waitForTicks(20);
           bed = bot.findBlock({
@@ -112,8 +109,7 @@ function createBot() {
         isSleeping = true;
         afkEnabled = false;
         bot.clearControlStates();
-        bot.chat("💤 Sleeping...");
-      } catch (err) {
+       } catch (err) {
         console.log("❌ Couldn't sleep:", err.message);
       }
     }, 1000);
@@ -125,7 +121,6 @@ function createBot() {
         await bot.wake();
         isSleeping = false;
         afkEnabled = true;
-        bot.chat("☀️ Woke up!");
         startAfkMovements();
       } catch (err) {
         console.log("❌ Couldn't wake up:", err.message);
