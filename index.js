@@ -7,7 +7,7 @@ function createBot() {
   const bot = mineflayer.createBot({
     host: host,
     port: parseInt(port),
-    username: 'AFK_Bot',
+    username: 'uptimebot',
     version: false
   });
 
