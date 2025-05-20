@@ -1,7 +1,6 @@
 require('./keep-alive');
 const mineflayer = require('mineflayer');
 
-// Get and split the host + port
 const [host, port] = process.env.SERVER.split(':');
 
 function createBot() {
@@ -17,10 +16,10 @@ function createBot() {
 
   bot.on('spawn', () => {
     console.log('✅ Bot joined the server!');
-    bot.chat("I'm here and AFK-ready 😴");
+    bot.chat("😴 AFK Bot ready!");
 
     startAfkMovements();
-    autoSleepLoop(); // start checking for sleep
+    autoSleepLoop();
   });
 
   bot.on('end', () => {
@@ -33,7 +32,7 @@ function createBot() {
   });
 
   function startAfkMovements() {
-    if (!afkEnabled) return;
+    if (!afkEnabled || isSleeping) return;
 
     const directions = ['forward', 'back', 'left', 'right'];
 
@@ -60,15 +59,51 @@ function createBot() {
     randomMovement();
   }
 
-  // Auto sleep loop
+  async function placeBed() {
+    return new Promise(async (resolve, reject) => {
+      try {
+        bot.chat('/give @s white_bed');
+        await bot.waitForTicks(10); // wait for the bed to appear in inventory
+
+        const bedItem = bot.inventory.items().find(item => item.name.includes('bed'));
+        if (!bedItem) return reject('No bed in inventory');
+
+        const refBlock = bot.blockAt(bot.entity.position.offset(0, -1, 0)); // block under the bot
+        if (!refBlock || !bot.canPlaceBlock(refBlock)) return reject('No good place to place bed');
+
+        await bot.equip(bedItem, 'hand');
+        await bot.placeBlock(refBlock, { x: 0, y: 1, z: 0 });
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
   function autoSleepLoop() {
     setInterval(async () => {
       if (bot.time.isDay || isSleeping) return;
 
-      const bed = bot.findBlock({
+      let bed = bot.findBlock({
         matching: block => bot.isABed(block),
         maxDistance: 10
       });
+
+      if (!bed) {
+        try {
+          await placeBed();
+          bot.chat("🛏️ Placed a bed.");
+          // give time to place
+          await bot.waitForTicks(20);
+          bed = bot.findBlock({
+            matching: block => bot.isABed(block),
+            maxDistance: 10
+          });
+        } catch (err) {
+          console.log('❌ Failed to place bed:', err);
+          return;
+        }
+      }
 
       if (!bed) return;
 
@@ -77,24 +112,23 @@ function createBot() {
         isSleeping = true;
         afkEnabled = false;
         bot.clearControlStates();
-        bot.chat("💤 Sleeping... goodnight!");
+        bot.chat("💤 Sleeping...");
       } catch (err) {
-        // Sleep failed, ignore
+        console.log("❌ Couldn't sleep:", err.message);
       }
     }, 1000);
   }
 
-  // Wake up automatically when day
   bot.on('time', async () => {
     if (isSleeping && bot.time.isDay) {
       try {
         await bot.wake();
         isSleeping = false;
         afkEnabled = true;
-        bot.chat("☀️ Morning! Back to AFK.");
+        bot.chat("☀️ Woke up!");
         startAfkMovements();
       } catch (err) {
-        // Waking failed, ignore
+        console.log("❌ Couldn't wake up:", err.message);
       }
     }
   });
@@ -102,9 +136,8 @@ function createBot() {
   bot.on('death', () => {
     console.log('💀 Bot died! Respawning...');
     bot.once('respawn', () => {
-      console.log('♻️ Bot respawned, restarting AFK loop');
-      afkEnabled = true;
       isSleeping = false;
+      afkEnabled = true;
       startAfkMovements();
       autoSleepLoop();
     });
