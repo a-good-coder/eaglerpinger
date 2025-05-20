@@ -9,7 +9,7 @@ function startBot() {
   bot = mineflayer.createBot({
     host: host,
     port: parseInt(port),
-    username: 'dontworryimjustabotthatjunfeimade',
+    username: 'uptimebot',
     version: false,
   });
 
